@@ -8,4 +8,4 @@ g++ -std=c++17 -O3 \
     -o csv_parser
 
 ./csv_parser
-```bash
+```
