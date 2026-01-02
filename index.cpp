@@ -81,7 +81,7 @@ std::unordered_map<std::string, ColumnType> infer_csv_schema(const char* data, s
 }
 
 int main() {
-    const char* filepath = "./test.csv";
+    const char* filepath = "/Users/jaskaransinghpuri/Documents/c++/fastfileparser/test.csv";
 
     MMapManager mmap_manager;
     size_t file_size;
@@ -109,26 +109,28 @@ int main() {
     CSVColumnScanner scanner;
     scanner.init(data, file_size, 1);
 
-    const char* value;
-    size_t length;
-    
     std::cout << "\nValues in column index 2:\n";
 
     double sum = 0.0;
-    while(scanner.next(&value, &length)) {
-        if (length == 0) continue;
-
+    while (auto value_opt = scanner.iterate_row_by_column()) {
         try {
-            std::string temp_str(value, length); 
-            double number = std::stod(temp_str);
-            sum += number;
-        } catch (...) {
+            sum += std::stod(std::string(*value_opt));
+        } catch (const std::invalid_argument& e) {
+            continue;
+        } catch (const std::out_of_range& e) {
             continue;
         }
     }
 
     std::cout << "Sum of column 2: " << sum << "\n";
-    
+    scanner.init(data, file_size, 2);  // Reset scanner to column 2
+    std::string filter = "jas";
+
+    std::cout << "\nRows matching '" << filter << "':\n";
+    while (auto row = scanner.filter_row_by_column(&filter)) {
+        std::cout << *row << "\n";
+    }
+
     mmap_manager.close(data, file_size);
     return 0;
 }

@@ -1,5 +1,8 @@
 #include "csv_scanner.h"
 #include <cstring>
+#include <iostream>
+#include <string_view>
+#include <optional>
 
 void CSVColumnScanner::init(char* data, size_t size, int col_idx) {
     data_start = data;
@@ -8,38 +11,68 @@ void CSVColumnScanner::init(char* data, size_t size, int col_idx) {
     current_row = data_start;
 }
 
-bool CSVColumnScanner::next(const char** out_value, size_t* out_length) {
-    if (current_row >= data_end) return false;
-    const char* row_end = (const char*)memchr(current_row, '\n', data_end - current_row);
+std::optional<std::string_view> CSVColumnScanner::iterate_row_by_column() {
+    while (current_row < data_end) {
+        const char* row_end = (const char*)memchr(current_row, '\n', data_end - current_row);
+        if (!row_end) row_end = data_end;
 
-    if (!row_end) row_end = data_end;
+        const char* col_ptr = current_row;
+        int current_col = 0;
 
-    const char* col_ptr = current_row;
-    int current_col = 0;
-
-    while(current_col < target_column && col_ptr < row_end) {
-        const char* next_comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
-        if (!next_comma) break;
-        col_ptr = next_comma + 1;
-        current_col++;
-    }
-
-    if (current_col == target_column) {
-        const char* next_comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
-        const char* val_end = next_comma ? next_comma : row_end;
-
-        if (val_end > col_ptr && *(val_end - 1) == '\r') {
-            *out_length = (val_end - 1) - col_ptr;
-        } else {
-            *out_length = val_end - col_ptr;
+        while (current_col < target_column && col_ptr < row_end) {
+            const char* comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+            if (!comma) break;
+            col_ptr = comma + 1;
+            current_col++;
         }
 
-        *out_value = col_ptr;
+        if (current_col == target_column) {
+            const char* val_end = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+            if (!val_end) val_end = row_end;
+
+            current_row = (row_end < data_end) ? row_end + 1 : data_end;
+
+            return std::string_view(col_ptr, val_end - col_ptr);
+        }
+
         current_row = (row_end < data_end) ? row_end + 1 : data_end;
-        return true;
     }
 
-    // Move to the next row
-    current_row = (row_end < data_end) ? row_end + 1 : data_end;
-    return next(out_value, out_length);
+    return std::nullopt;
+}
+
+std::optional<std::string_view> CSVColumnScanner::filter_row_by_column(std::string* filter) {
+
+    while (current_row < data_end) {
+        const char* row_start = current_row;  // Save row start for return
+        const char* row_end = (const char*)memchr(current_row, '\n', data_end - current_row);
+        if (!row_end) row_end = data_end;
+
+        const char* col_ptr = current_row;
+        int current_col = 0;
+
+        // Navigate to target column
+        while (current_col < target_column && col_ptr < row_end) {
+            const char* comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+            if (!comma) break;
+            col_ptr = comma + 1;
+            current_col++;
+        }
+
+        if (current_col == target_column) {
+            const char* val_end = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+            if (!val_end) val_end = row_end;
+
+            std::string_view cell_value(col_ptr, val_end - col_ptr);
+
+            if (cell_value == *filter) {
+                current_row = (row_end < data_end) ? row_end + 1 : data_end;
+                return std::string_view(row_start, row_end - row_start);
+            }
+        }
+
+        current_row = (row_end < data_end) ? row_end + 1 : data_end;
+    }
+
+    return std::nullopt;
 }

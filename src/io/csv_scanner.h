@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
+#include <string_view>
 
 class CSVColumnScanner {
     private:
@@ -10,5 +12,6 @@ class CSVColumnScanner {
         const char* current_row;
     public:
         void init(char* data, size_t size, int col_idx);
-        bool next(const char** out_value, size_t* out_length);
+        std::optional<std::string_view> iterate_row_by_column();
+        std::optional<std::string_view> filter_row_by_column(std::string* filter);
 };
