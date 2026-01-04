@@ -127,7 +127,7 @@ int main() {
     std::string filter = "jas";
 
     std::cout << "\nRows matching '" << filter << "':\n";
-    while (auto row = scanner.filter_row_by_column(&filter)) {
+    while (auto row = scanner.filter_row_by_column(filter)) {
         std::cout << *row << "\n";
     }
 
