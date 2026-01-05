@@ -11,6 +11,20 @@ void CSVColumnScanner::init(char* data, size_t size, int col_idx) {
     current_row = data_start;
 }
 
+std::int64_t CSVColumnScanner::sum() {
+    double sum = 0.0;
+    while (auto value_opt = CSVColumnScanner::iterate_row_by_column()) {
+        try {
+            sum += std::stod(std::string(*value_opt));
+        } catch (const std::invalid_argument& e) {
+            continue;
+        } catch (const std::out_of_range& e) {
+            continue;
+        }
+    }
+    return sum;
+}
+
 CSVColumnScanner::ParsedRow CSVColumnScanner::parse_next_row() {
     ParsedRow result = {nullptr, nullptr, nullptr, nullptr, false};
     if (current_row >= data_end) return result;
@@ -56,7 +70,7 @@ std::optional<std::string_view> CSVColumnScanner::filter_row_by_column(const std
     while (current_row < data_end) {
         ParsedRow row = parse_next_row();
         if (row.found) {
-            std::string cell_value(row.cell_start, row.cell_end - row.cell_start);
+            std::string_view cell_value(row.cell_start, row.cell_end - row.cell_start);
 
             if (cell_value.find(filter) != std::string_view::npos) {
                 return std::string_view(row.row_start, row.row_end - row.row_start);

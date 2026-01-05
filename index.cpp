@@ -108,21 +108,8 @@ int main() {
 
     CSVColumnScanner scanner;
     scanner.init(data, file_size, 1);
+    std::cout << "SUM: " << scanner.sum();
 
-    std::cout << "\nValues in column index 2:\n";
-
-    double sum = 0.0;
-    while (auto value_opt = scanner.iterate_row_by_column()) {
-        try {
-            sum += std::stod(std::string(*value_opt));
-        } catch (const std::invalid_argument& e) {
-            continue;
-        } catch (const std::out_of_range& e) {
-            continue;
-        }
-    }
-
-    std::cout << "Sum of column 2: " << sum << "\n";
     scanner.init(data, file_size, 2);  // Reset scanner to column 2
     std::string filter = "jas";
 

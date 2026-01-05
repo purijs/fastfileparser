@@ -25,4 +25,5 @@ class CSVColumnScanner {
         void init(char* data, size_t size, int col_idx);
         std::optional<std::string_view> iterate_row_by_column();
         std::optional<std::string_view> filter_row_by_column(const std::string& filter);
+        std::int64_t sum();
 };
