@@ -80,3 +80,38 @@ std::optional<std::string_view> CSVColumnScanner::filter_row_by_column(const std
 
     return std::nullopt;
 }
+
+std::double_t CSVColumnScanner::groupby_operation_sum(const std::string& filter, int target_column) {
+
+    double sum = 0.0;
+    while (auto row = filter_row_by_column(filter)) {
+        if (row != std::nullopt) {
+            const char* col_ptr = row->data();
+            const char* row_end = col_ptr + row->size();
+            int current_col = 0;
+
+            // Navigate to target column
+            while (current_col < target_column && col_ptr < row_end) {
+                const char* comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+                if (!comma) break;
+                col_ptr = comma + 1;
+                current_col++;
+            }
+
+            if (current_col == target_column) {
+                const char* cell_end = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+                if (!cell_end) cell_end = row_end;
+
+                std::string_view numeric_cell(col_ptr, cell_end - col_ptr);
+                try {
+                    sum += std::stod(std::string(numeric_cell));
+                } catch (...) {
+                    continue;
+                }
+            }
+
+        }
+    }
+
+    return sum;
+}

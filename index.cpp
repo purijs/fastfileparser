@@ -118,6 +118,11 @@ int main() {
         std::cout << *row << "\n";
     }
 
+    scanner.init(data, file_size, 2);
+    std::string filter_new = "ram";
+    std::cout << scanner.groupby_operation_sum(filter_new, 1);
+
+
     mmap_manager.close(data, file_size);
     return 0;
 }

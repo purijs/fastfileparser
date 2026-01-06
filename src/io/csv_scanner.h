@@ -26,4 +26,5 @@ class CSVColumnScanner {
         std::optional<std::string_view> iterate_row_by_column();
         std::optional<std::string_view> filter_row_by_column(const std::string& filter);
         std::int64_t sum();
+        std::double_t groupby_operation_sum(const std::string& filter, int target_column);
 };
