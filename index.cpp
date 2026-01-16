@@ -107,10 +107,12 @@ int main() {
     }
 
     CSVColumnScanner scanner;
+
     scanner.init(data, file_size, 1);
     std::cout << "SUM: " << scanner.sum();
 
-    scanner.init(data, file_size, 2);  // Reset scanner to column 2
+    scanner.init(data, file_size, 2);
+    scanner.enable_drop_duplicates(2);
     std::string filter = "jas";
 
     std::cout << "\nRows matching '" << filter << "':\n";
@@ -120,8 +122,11 @@ int main() {
 
     scanner.init(data, file_size, 2);
     std::string filter_new = "ram";
-    std::cout << scanner.groupby_operation_sum(filter_new, 1);
+    std::cout << scanner.groupby_operation_sum(filter_new, 1) << "\n";
 
+    scanner.init(data, file_size, 1);
+    scanner.enable_drop_duplicates(2);
+    std::cout << "NON DUPLICATE SUM: " << scanner.sum();
 
     mmap_manager.close(data, file_size);
     return 0;

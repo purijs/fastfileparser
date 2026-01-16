@@ -8,10 +8,15 @@ void CSVColumnScanner::init(char* data, size_t size, int col_idx) {
     data_start = data;
     data_end = data + size;
     target_column = col_idx;
-    current_row = data_start;
+
+    const char* header = (const char*)memchr(data, '\n', size);
+    current_row = header ? header + 1 : data;
+
+    drop_duplicates = false;
+    duplicate_rows.clear();
 }
 
-std::int64_t CSVColumnScanner::sum() {
+std::double_t CSVColumnScanner::sum() {
     double sum = 0.0;
     while (auto value_opt = CSVColumnScanner::iterate_row_by_column()) {
         try {
@@ -25,32 +30,70 @@ std::int64_t CSVColumnScanner::sum() {
     return sum;
 }
 
-CSVColumnScanner::ParsedRow CSVColumnScanner::parse_next_row() {
-    ParsedRow result = {nullptr, nullptr, nullptr, nullptr, false};
-    if (current_row >= data_end) return result;
+void CSVColumnScanner::enable_drop_duplicates(int dedup_column) {
+    this->dedup_column = dedup_column;
+    drop_duplicates = true;
+    duplicate_rows.clear();
+}
 
-    result.row_start = current_row;
-    result.row_end = (const char*)memchr(current_row, '\n', data_end - current_row);
-    if (!result.row_end) result.row_end = data_end;
-
-    const char* col_ptr = current_row;
+std::string_view CSVColumnScanner::extract_cell(const char* row_start, const char* row_end, int column_index) {
+    const char* col_ptr = row_start;
     int current_col = 0;
 
-    // Navigate to target column
-    while (current_col < target_column && col_ptr < result.row_end) {
-        const char* comma = (const char*)memchr(col_ptr, ',', result.row_end - col_ptr);
-        if (!comma) break;
+    while (current_col < column_index && col_ptr < row_end) {
+        const char* comma = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+        if (!comma) return std::string_view();
         col_ptr = comma + 1;
         current_col++;
     }
 
-    if (current_col == target_column) {
-        result.cell_start = col_ptr;
-        result.cell_end = (const char*)memchr(col_ptr, ',', result.row_end - col_ptr);
-        if (!result.cell_end) result.cell_end = result.row_end;
-        result.found = true;
+    if (current_col == column_index) {
+        const char* cell_end = (const char*)memchr(col_ptr, ',', row_end - col_ptr);
+        if (!cell_end) cell_end = row_end;
+        return std::string_view(col_ptr, cell_end - col_ptr);
     }
-    current_row = (result.row_end < data_end) ? result.row_end + 1 : data_end;
+
+    return std::string_view();
+}
+
+CSVColumnScanner::ParsedRow CSVColumnScanner::parse_next_row() {
+    ParsedRow result = {nullptr, nullptr, nullptr, nullptr, false};
+    while (current_row < data_end) {
+        result.row_start = current_row;
+        result.row_end = (const char*)memchr(current_row, '\n', data_end - current_row);
+        if (!result.row_end) result.row_end = data_end;
+        current_row = result.row_end < data_end ? result.row_end + 1 : data_end;
+
+        if (drop_duplicates) [[unlikely]] {
+            std::string_view dedup_value = extract_cell(result.row_start, result.row_end, dedup_column);
+
+            if (!dedup_value.empty()) {
+                if (!duplicate_rows.insert(dedup_value).second) {
+                    continue;
+                }
+            }
+        }
+
+        const char* col_ptr = result.row_start;
+        int current_col = 0;
+
+        // Navigate to target column
+        while (current_col < target_column && col_ptr < result.row_end) {
+            const char* comma = (const char*)memchr(col_ptr, ',', result.row_end - col_ptr);
+            if (!comma) break;
+            col_ptr = comma + 1;
+            current_col++;
+        }
+
+        if (current_col == target_column) {
+            result.cell_start = col_ptr;
+            result.cell_end = (const char*)memchr(col_ptr, ',', result.row_end - col_ptr);
+            if (!result.cell_end) result.cell_end = result.row_end;
+            result.found = true;
+            return result;
+        }
+    }
+
     return result;
 }
 
